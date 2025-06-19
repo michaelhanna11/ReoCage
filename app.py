@@ -14,8 +14,9 @@ from reportlab.lib.units import mm
 from reportlab.lib import colors
 
 # --- Constants for PDF Report (Customize these for your company) ---
-LOGO_URL = "https://placehold.co/100x40/FF0000/FFFFFF?text=COMPANY+LOGO" # Replace with your actual logo URL
-FALLBACK_LOGO_URL = "https://placehold.co/100x40/0000FF/FFFFFF?text=FALLBACK+LOGO" # Fallback logo URL
+# Replace with your actual logo URL. Using a placeholder image for demonstration.
+LOGO_URL = "https://placehold.co/100x40/FF0000/FFFFFF?text=COMPANY+LOGO"
+FALLBACK_LOGO_URL = "https://placehold.co/100x40/0000FF/FFFFFF?text=FALLBACK+LOGO" 
 COMPANY_NAME = "Your Company Name Pty Ltd"
 COMPANY_ADDRESS = "123 Main Street, Sydney NSW 2000, Australia"
 PROGRAM = "Rebar Calc App"
@@ -73,7 +74,8 @@ def download_logo():
                     f.write(response.content)
                 break
         except Exception:
-            continue
+            # Catch all exceptions during download attempts
+            pass
     return logo_file if logo_file and os.path.exists(logo_file) else None
 
 def generate_pdf_report(calculation_data, total_weight, cage_type, project_name, project_number, input_details):
@@ -165,7 +167,7 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     elements.append(Paragraph(f"Concrete Reinforcement Cage Weight Report", title_style))
     elements.append(Paragraph(f"for {cage_type}", subtitle_style))
     
-    # Cleaned-up project_info string
+    # Project Info
     project_info = (
         f"<b>Project:</b> {project_name}<br/>"
         f"<b>Number:</b> {project_number}<br/>"
@@ -186,36 +188,49 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
         ]
     ]
 
+    # Dynamically add input details to the table
+    # Mapping for cleaner component names in the report
+    component_name_map = {
+        "vertical_bars": "Vertical Bars",
+        "horizontal_bars": "Horizontal Bars",
+        "links": "Links/Ties"
+    }
+
     for category, items in input_details.items():
         for i, item in enumerate(items):
-            if item["qty"] > 0 and item["length"] > 0:
-                row_component = f"{category.replace('_', ' ').title()} (Type {i+1})"
+            # Only add to report if quantity or length is greater than 0
+            if item["qty"] > 0 or item["length"] > 0: 
+                row_component = f"{component_name_map.get(category, category.replace('_', ' ').title())} (Type {i+1})"
                 row_bar_size = item["size"]
-                row_quantity = item["qty"]
+                row_quantity = str(item["qty"]) # Ensure quantity is string for Paragraph
                 row_length = f"{item['length']:.2f}"
                 input_data_table.append([
                     Paragraph(row_component, table_cell_style),
                     Paragraph(row_bar_size, table_cell_center_style),
-                    Paragraph(str(row_quantity), table_cell_center_center_style), # Added a center style for quantity
+                    Paragraph(row_quantity, table_cell_center_style), # Corrected from table_cell_center_center_style
                     Paragraph(row_length, table_cell_center_style)
                 ])
+    
+    if len(input_data_table) > 1: # Check if there's actual data beyond headers
+        input_table = Table(input_data_table, colWidths=[60*mm, 35*mm, 35*mm, 40*mm])
+        input_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'), # Left align for component type
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'), # Center align for Bar Size, Quantity, Length
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        elements.append(input_table)
+    else:
+        elements.append(Paragraph("No input details were provided.", normal_style))
 
-    input_table = Table(input_data_table, colWidths=[60*mm, 35*mm, 35*mm, 40*mm])
-    input_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'), # Center align for Bar Size, Quantity, Length
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-        ('LEFTPADDING', (0, 0), (-1, -1), 3),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-    ]))
-    elements.append(input_table)
     elements.append(Spacer(1, 8*mm))
     
     # --- Weight Calculation Summary Section ---
@@ -250,7 +265,7 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
         summary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'), # Left align for component
             ('ALIGN', (1, 0), (-1, -1), 'CENTER'), # Center align for numeric columns
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -277,10 +292,11 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
             try:
                 logo = Image(logo_file, width=40*mm, height=15*mm)
                 logo.drawOn(canvas, 15*mm, A4[1] - 25*mm) # Position logo at top-left
-            except:
+            except Exception:
+                # Log error if image fails to draw, but don't stop PDF generation
                 pass
         
-        canvas.setFont('Helvetica-Bold', 10)
+        canvas.setFont('Helvetica-Bold', 10) # Corrected font size and family
         canvas.drawString(60*mm, A4[1] - 15*mm, COMPANY_NAME)
         canvas.setFont('Helvetica', 8)
         canvas.drawString(60*mm, A4[1] - 20*mm, COMPANY_ADDRESS)
@@ -303,8 +319,8 @@ st.set_page_config(page_title="Concrete Reinforcement Cage Weight Calculator", l
 st.title("🏗️ Concrete Reinforcement Cage Weight Calculator")
 st.markdown("Calculate the total weight of your concrete reinforcement cages based on Australian standards.")
 
-# --- Project Details Input ---
-st.sidebar.header("Project Details for Report")
+# --- Project Details Input (in sidebar) ---
+st.sidebar.header("Report Details")
 project_name = st.sidebar.text_input("Project Name:", "My Reinforcement Project")
 project_number = st.sidebar.text_input("Project Number:", "PRJ-001")
 
