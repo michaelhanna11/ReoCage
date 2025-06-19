@@ -18,7 +18,7 @@ from reportlab.lib import colors
 LOGO_URL = "https://drive.google.com/uc?export=download&id=1VebdT2loVGX57noP9t2GgQhwCNn8AA3h"
 FALLBACK_LOGO_URL = "https://onedrive.live.com/download?cid=A48CC9068E3FACE0&resid=A48CC9068E3FACE0%21s252b6fb7fcd04f53968b2a09114d33ed" 
 COMPANY_NAME = "tekhne Consulting Engineers"
-COMPANY_ADDRESS = "    " # Placeholder from Wind Load Calculator; update with actual address if needed
+COMPANY_ADDRESS = "" # Changed to empty string for cleaner handling
 PROGRAM = "Rebar Calc App" # Keeping this specific to the Rebar app
 PROGRAM_VERSION = "1.0"
 
@@ -297,13 +297,14 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
         
         for row in calculation_data:
             table_data.append([
-                Paragraph(str(row["Component"]), table_cell_style),
-                Paragraph(str(row["Bar Size"]), table_cell_center_style),
-                Paragraph(str(row["Quantity"]), table_cell_center_style),
-                Paragraph(f"{row['Length per Bar (m)']:.2f}", table_cell_center_style),
-                Paragraph(f"{row['Total Length (m)']:.2f}", table_cell_center_style),
-                Paragraph(f"{row['Unit Weight (kg/m)']:.3f}", table_cell_center_style),
-                Paragraph(f"{row['Total Weight (kg)']:.2f}", table_cell_center_style)
+                Paragraph(str(row.get("Component", "")), table_cell_style),
+                Paragraph(str(row.get("Bar Size", "")), table_cell_center_style),
+                Paragraph(str(row.get("Quantity", 0)), table_cell_center_style),
+                # Using .get() here to safely retrieve the value and prevent KeyError
+                Paragraph(f"{row.get('Length per Bar (m)', 0.0):.2f}", table_cell_center_style), 
+                Paragraph(f"{row.get('Total Length (m)', 0.0):.2f}", table_cell_center_style),
+                Paragraph(f"{row.get('Unit Weight (kg/m)', 0.0):.3f}", table_cell_center_style),
+                Paragraph(f"{row.get('Total Weight (kg)', 0.0):.2f}", table_cell_center_style)
             ])
             
         summary_table = Table(table_data, colWidths=[40*mm, 20*mm, 20*mm, 25*mm, 25*mm, 25*mm, 25*mm])
