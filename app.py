@@ -8,19 +8,19 @@ from datetime import datetime
 # Import ReportLab modules
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY # Added TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
 
-# --- Constants for PDF Report (Customize these for your company) ---
+# --- Constants for PDF Report (Customized from Wind Load Calculator) ---
 # Replace with your actual logo URL. Using a placeholder image for demonstration.
 LOGO_URL = "https://placehold.co/100x40/FF0000/FFFFFF?text=COMPANY+LOGO"
 FALLBACK_LOGO_URL = "https://placehold.co/100x40/0000FF/FFFFFF?text=FALLBACK+LOGO" 
-COMPANY_NAME = "Your Company Name Pty Ltd"
-COMPANY_ADDRESS = "123 Main Street, Sydney NSW 2000, Australia"
-PROGRAM = "Rebar Calc App"
-PROGRAM_VERSION = "1.0"
+COMPANY_NAME = "Your Company Name Pty Ltd" # From Wind Load Calculator
+COMPANY_ADDRESS = "123 Main Street, Sydney NSW 2000, Australia" # From Wind Load Calculator
+PROGRAM = "Rebar Calc App" # From Wind Load Calculator
+PROGRAM_VERSION = "1.0" # From Wind Load Calculator
 
 # Define Australian rebar sizes and their nominal mass per meter (kg/m)
 # Based on common Australian standards (e.g., AS/NZS 4671)
@@ -62,6 +62,7 @@ def calculate_bar_weight(bar_size, quantity, length_per_bar_m):
     return total_weight, unit_weight, total_length
 
 # --- PDF Report Functions ---
+# This function is used to download the logo to a local file for ReportLab
 def download_logo():
     """Download company logo for PDF report."""
     logo_file = None
@@ -78,35 +79,62 @@ def download_logo():
             pass
     return logo_file if logo_file and os.path.exists(logo_file) else None
 
+# Helper function to draw header/footer on each page of the PDF
+def _draw_header_footer(canvas, doc):
+    canvas.saveState()
+    
+    # Draw Header (Company Name and Address)
+    canvas.setFont('Helvetica-Bold', 10)
+    canvas.drawString(60*mm, A4[1] - 15*mm, COMPANY_NAME)
+    canvas.setFont('Helvetica', 8)
+    canvas.drawString(60*mm, A4[1] - 20*mm, COMPANY_ADDRESS)
+    
+    # Draw Logo
+    logo_file = "company_logo.png" # Assuming it was downloaded by generate_pdf_report
+    if os.path.exists(logo_file):
+        try:
+            logo = Image(logo_file, width=40*mm, height=15*mm)
+            logo.drawOn(canvas, 15*mm, A4[1] - 25*mm) # Position logo at top-left
+        except Exception:
+            pass # Ignore if image drawing fails
+    
+    # Draw Footer
+    canvas.setFont('Helvetica', 8)
+    footer_text = f"{PROGRAM} {PROGRAM_VERSION} | {COMPANY_NAME} © | Page {doc.page}"
+    canvas.drawCentredString(A4[0]/2.0, 10*mm, footer_text)
+    
+    canvas.restoreState()
+
+# Main PDF generation function
 def generate_pdf_report(calculation_data, total_weight, cage_type, project_name, project_number, input_details):
     """Generate a professional PDF report with company branding and header on all pages."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, 
                             leftMargin=15*mm, rightMargin=15*mm,
-                            topMargin=20*mm, bottomMargin=15*mm)
+                            topMargin=20*mm, bottomMargin=15*mm) # Reduced top margin
     
     styles = getSampleStyleSheet()
     
-    # Custom styles (adjusted for single-page fit)
+    # Custom styles (adopted from Wind Load Calculator)
     title_style = ParagraphStyle(
-        name='Title',
+        name='TitleStyle',
         parent=styles['Title'],
-        fontSize=14,
+        fontSize=14, # Reduced from 16
         leading=18,
         alignment=TA_CENTER,
-        spaceAfter=8
+        spaceAfter=8 # Reduced from 12
     )
     
     subtitle_style = ParagraphStyle(
-        name='Subtitle',
+        name='SubtitleStyle',
         parent=styles['Normal'],
         fontSize=10,
         alignment=TA_CENTER,
         spaceAfter=15
     )
     
-    heading1_style = ParagraphStyle(
-        name='Heading1',
+    heading_style = ParagraphStyle( # Renamed from heading1_style for clarity
+        name='HeadingStyle',
         parent=styles['Heading1'],
         fontSize=14,
         spaceBefore=20,
@@ -124,20 +152,23 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     heading3_style = ParagraphStyle(
         name='Heading3',
         parent=styles['Heading3'],
-        fontSize=11,
-        spaceAfter=4
+        fontSize=11, # Reduced from 12
+        spaceAfter=4 # Reduced from 6
     )
     
     normal_style = ParagraphStyle(
-        name='Normal',
+        name='NormalStyle',
         parent=styles['Normal'],
         fontSize=10,
         leading=12,
         spaceAfter=8
     )
     
+    bold_style = ParagraphStyle(name='BoldStyle', parent=styles['Normal'], fontSize=9, spaceAfter=4, fontName='Helvetica-Bold') # Added
+    justified_style = ParagraphStyle(name='JustifiedStyle', parent=styles['Normal'], fontSize=9, spaceAfter=4, alignment=TA_JUSTIFY) # Added
+
     table_header_style = ParagraphStyle(
-        name='TableHeader',
+        name='TableHeaderStyle',
         parent=styles['Normal'],
         fontSize=10,
         leading=12,
@@ -146,40 +177,54 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     )
     
     table_cell_style = ParagraphStyle(
-        name='TableCell',
+        name='TableCellStyle',
         parent=styles['Normal'],
-        fontSize=8,
-        leading=9,
+        fontSize=8, # Reduced from 9
+        leading=9, # Reduced from 11
         alignment=TA_LEFT
     )
     
     table_cell_center_style = ParagraphStyle(
         name='TableCellCenter',
         parent=styles['Normal'],
-        fontSize=8,
-        leading=9,
+        fontSize=8, # Reduced from 9
+        leading=9, # Reduced from 11
         alignment=TA_CENTER
     )
     
     elements = []
+
+    # Attempt to download logo once before building the document
+    download_logo() 
     
     # Title and project info
     elements.append(Paragraph(f"Concrete Reinforcement Cage Weight Report", title_style))
     elements.append(Paragraph(f"for {cage_type}", subtitle_style))
     
     # Project Info
-    project_info = (
+    project_info_text = (
         f"<b>Project:</b> {project_name}<br/>"
         f"<b>Number:</b> {project_number}<br/>"
         f"<b>Date:</b> {datetime.now().strftime('%d %B %Y')}"
     )
-    elements.append(Paragraph(project_info, normal_style))
+    elements.append(Paragraph(project_info_text, normal_style))
     elements.append(Spacer(1, 8*mm))
     
+    # --- Introduction Section ---
+    elements.append(Paragraph("Introduction", heading_style))
+    intro_text = (
+        "This report provides a detailed calculation of the total weight for the specified concrete reinforcement cage. "
+        "The calculations are based on standard nominal mass per meter values for Australian reinforcing steel, "
+        "ensuring compliance with local standards. This document summarizes the input parameters provided and "
+        "presents the calculated weights for each component, culminating in the total estimated cage weight."
+    )
+    elements.append(Paragraph(intro_text, justified_style))
+    elements.append(Spacer(1, 4*mm))
+
     # --- Input Details Section ---
-    elements.append(Paragraph("Input Details", heading1_style))
+    elements.append(Paragraph("Input Details", heading_style))
     
-    input_data_table = [
+    input_data_table_content = [
         [
             Paragraph("Component Type", table_header_style),
             Paragraph("Bar Size", table_header_style),
@@ -189,7 +234,6 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     ]
 
     # Dynamically add input details to the table
-    # Mapping for cleaner component names in the report
     component_name_map = {
         "vertical_bars": "Vertical Bars",
         "horizontal_bars": "Horizontal Bars",
@@ -204,15 +248,15 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
                 row_bar_size = item["size"]
                 row_quantity = str(item["qty"]) # Ensure quantity is string for Paragraph
                 row_length = f"{item['length']:.2f}"
-                input_data_table.append([
+                input_data_table_content.append([
                     Paragraph(row_component, table_cell_style),
                     Paragraph(row_bar_size, table_cell_center_style),
-                    Paragraph(row_quantity, table_cell_center_style), # Corrected from table_cell_center_center_style
+                    Paragraph(row_quantity, table_cell_center_style), 
                     Paragraph(row_length, table_cell_center_style)
                 ])
     
-    if len(input_data_table) > 1: # Check if there's actual data beyond headers
-        input_table = Table(input_data_table, colWidths=[60*mm, 35*mm, 35*mm, 40*mm])
+    if len(input_data_table_content) > 1: # Check if there's actual data beyond headers
+        input_table = Table(input_data_table_content, colWidths=[60*mm, 35*mm, 35*mm, 40*mm])
         input_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -234,7 +278,7 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     elements.append(Spacer(1, 8*mm))
     
     # --- Weight Calculation Summary Section ---
-    elements.append(Paragraph("Weight Calculation Summary", heading1_style))
+    elements.append(Paragraph("Weight Calculation Summary", heading_style))
     
     if calculation_data:
         # Prepare data for the table
@@ -282,34 +326,8 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     else:
         elements.append(Paragraph("No bar details were entered for calculation.", normal_style))
 
-    # Header and Footer drawing function
-    def draw_header_footer(canvas, doc):
-        canvas.saveState()
-        
-        # Draw Header
-        logo_file = download_logo()
-        if logo_file:
-            try:
-                logo = Image(logo_file, width=40*mm, height=15*mm)
-                logo.drawOn(canvas, 15*mm, A4[1] - 25*mm) # Position logo at top-left
-            except Exception:
-                # Log error if image fails to draw, but don't stop PDF generation
-                pass
-        
-        canvas.setFont('Helvetica-Bold', 10) # Corrected font size and family
-        canvas.drawString(60*mm, A4[1] - 15*mm, COMPANY_NAME)
-        canvas.setFont('Helvetica', 8)
-        canvas.drawString(60*mm, A4[1] - 20*mm, COMPANY_ADDRESS)
-        
-        # Draw Footer
-        canvas.setFont('Helvetica', 8)
-        footer_text = f"{PROGRAM} {PROGRAM_VERSION} | {COMPANY_NAME} © | Page {doc.page}"
-        canvas.drawCentredString(A4[0]/2.0, 10*mm, footer_text)
-        
-        canvas.restoreState()
-    
     # Build the document with header and footer on all pages
-    doc.build(elements, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+    doc.build(elements, onFirstPage=_draw_header_footer, onLaterPages=_draw_header_footer)
     buffer.seek(0)
     return buffer
 
