@@ -8,19 +8,19 @@ from datetime import datetime
 # Import ReportLab modules
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY # Added TA_JUSTIFY
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
 
 # --- Constants for PDF Report (Customized from Wind Load Calculator) ---
-# Replace with your actual logo URL. Using a placeholder image for demonstration.
-LOGO_URL = "https://placehold.co/100x40/FF0000/FFFFFF?text=COMPANY+LOGO"
-FALLBACK_LOGO_URL = "https://placehold.co/100x40/0000FF/FFFFFF?text=FALLBACK+LOGO" 
-COMPANY_NAME = "Your Company Name Pty Ltd" # From Wind Load Calculator
-COMPANY_ADDRESS = "123 Main Street, Sydney NSW 2000, Australia" # From Wind Load Calculator
-PROGRAM = "Rebar Calc App" # From Wind Load Calculator
-PROGRAM_VERSION = "1.0" # From Wind Load Calculator
+# Company details from the provided Wind Load Calculator app
+LOGO_URL = "https://drive.google.com/uc?export=download&id=1VebdT2loVGX57noP9t2GgQhwCNn8AA3h"
+FALLBACK_LOGO_URL = "https://onedrive.live.com/download?cid=A48CC9068E3FACE0&resid=A48CC9068E3FACE0%21s252b6fb7fcd04f53968b2a09114d33ed" 
+COMPANY_NAME = "tekhne Consulting Engineers"
+COMPANY_ADDRESS = "    " # Placeholder from Wind Load Calculator; update with actual address if needed
+PROGRAM = "Rebar Calc App" # Keeping this specific to the Rebar app
+PROGRAM_VERSION = "1.0"
 
 # Define Australian rebar sizes and their nominal mass per meter (kg/m)
 # Based on common Australian standards (e.g., AS/NZS 4671)
@@ -106,7 +106,7 @@ def _draw_header_footer(canvas, doc):
     canvas.restoreState()
 
 # Main PDF generation function
-def generate_pdf_report(calculation_data, total_weight, cage_type, project_name, project_number, input_details):
+def generate_pdf_report(calculation_data, total_weight, cage_type, project_name, project_number, cage_designation, input_details):
     """Generate a professional PDF report with company branding and header on all pages."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, 
@@ -205,6 +205,7 @@ def generate_pdf_report(calculation_data, total_weight, cage_type, project_name,
     project_info_text = (
         f"<b>Project:</b> {project_name}<br/>"
         f"<b>Number:</b> {project_number}<br/>"
+        f"<b>Cage Designation:</b> {cage_designation}<br/>" # Added Cage Designation
         f"<b>Date:</b> {datetime.now().strftime('%d %B %Y')}"
     )
     elements.append(Paragraph(project_info_text, normal_style))
@@ -341,6 +342,7 @@ st.markdown("Calculate the total weight of your concrete reinforcement cages bas
 st.sidebar.header("Report Details")
 project_name = st.sidebar.text_input("Project Name:", "My Reinforcement Project")
 project_number = st.sidebar.text_input("Project Number:", "PRJ-001")
+cage_designation = st.sidebar.text_input("Cage Designation:", "C-1") # New input for cage designation
 
 # --- Cage Type Selection ---
 cage_type = st.selectbox(
@@ -479,6 +481,7 @@ if cage_type == "Wall Cage":
                 cage_type, 
                 project_name, 
                 project_number,
+                cage_designation, # Pass the new cage_designation
                 input_details
             )
             
